@@ -6,10 +6,6 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js"
   },
-  "keywords": [],
-  "author": "",
-  "type": "module",
-  "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.1",
@@ -23,6 +19,5 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.7"
-  },
-  "description": ""
+  }
 }
