@@ -1,3 +1,4 @@
+// 3. Backend - Updated server code (src/index.js)
 import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
@@ -19,11 +20,14 @@ const __dirname = path.resolve();
 app.use(express.json());
 app.use(cookieParser());
 
-// CORS configuration
+// CORS configuration - FIXED
 app.use(
   cors({
     origin: process.env.NODE_ENV === "production" 
-      ? process.env.CLIENT_URL || "https://your-frontend-domain.vercel.app"
+      ? [
+          "https://your-frontend-domain.vercel.app", // Replace with your actual frontend URL
+          "https://chat-frontend-your-username.vercel.app" // Replace with your actual frontend URL
+        ]
       : "http://localhost:5173",
     credentials: true,
   })
@@ -51,7 +55,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Production static files serving
+// Production static files serving (Remove this if deploying separately)
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
   
