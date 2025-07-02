@@ -3,8 +3,6 @@ import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
-
 export const useAuthStore = create((set, get) => ({
   authUser: null,
   isSigningUp: false,
@@ -17,7 +15,6 @@ export const useAuthStore = create((set, get) => ({
   checkAuth: async () => {
     try {
       const res = await axiosInstance.get("/auth/check");
-
       set({ authUser: res.data });
       get().connectSocket();
     } catch (error) {
@@ -82,20 +79,17 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  connectSocket: () => {
+ connectSocket: () => {
     const { authUser } = get();
     if (!authUser || get().socket?.connected) return;
 
-    const socket = io(BASE_URL, {
+    const socket = io(import.meta.env.VITE_API_BASE_URL, {
       path: "/socket.io",
       transports: ["websocket"],
       query: {
         userId: authUser._id,
       },
     });
-    socket.connect();
-
-    set({ socket: socket });
 
     socket.on("connect_error", (err) => {
       console.log("Socket connection error:", err);
@@ -104,8 +98,10 @@ export const useAuthStore = create((set, get) => ({
     socket.on("getOnlineUsers", (userIds) => {
       set({ onlineUsers: userIds });
     });
+
+    set({ socket });
   },
-  
+
   disconnectSocket: () => {
     if (get().socket?.connected) get().socket.disconnect();
   },

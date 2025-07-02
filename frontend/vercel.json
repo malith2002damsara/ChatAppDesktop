@@ -15,14 +15,16 @@
       "dest": "https://chat-backend-rho-sable.vercel.app/api/$1"
     },
     {
+      "src": "/socket.io/(.*)",
+      "dest": "https://chat-backend-rho-sable.vercel.app/socket.io/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/",
+      "dest": "/index.html",
       "continue": true
     }
   ],
-  "build": {
-    "env": {
-      "VITE_API_BASE_URL": "https://chat-backend-rho-sable.vercel.app"
-    }
+  "env": {
+    "VITE_API_BASE_URL": "https://chat-backend-rho-sable.vercel.app"
   }
 }
