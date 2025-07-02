@@ -7,17 +7,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   plugins: [react()],
-  base: '/', // Ensure base path is correct
+  base: './', // Changed from '/' to './'
   build: {
     outDir: path.resolve(__dirname, 'dist'),
     emptyOutDir: true,
     rollupOptions: {
-      input: {
-        main: path.resolve(__dirname, 'index.html')
-      }
+      input: path.resolve(__dirname, 'index.html')
     }
   },
   server: {
-    historyApiFallback: true
+    historyApiFallback: true,
   }
 })

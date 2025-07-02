@@ -1,20 +1,5 @@
 {
   "version": 2,
-  "routes": [
-    {
-      "src": "/assets/(.*)",
-      "headers": {
-        "Content-Type": "text/javascript"
-      }
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/",
-      "headers": {
-        "Content-Type": "text/javascript"
-      }
-    }
-  ],
   "builds": [
     {
       "src": "package.json",
@@ -22,6 +7,22 @@
       "config": {
         "distDir": "dist",
         "nodeVersion": "20.x"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1",
+      "headers": {
+        "Content-Type": "application/javascript"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html",
+      "headers": {
+        "Content-Type": "text/html"
       }
     }
   ]
