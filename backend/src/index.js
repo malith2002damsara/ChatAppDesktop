@@ -11,7 +11,7 @@ import { app, server } from "./lib/socket.js";
 
 dotenv.config();
 
-const PORT = process.env.PORT || 3000; // Always provide a fallback port
+const PORT = process.env.PORT || 5001;
 const __dirname = path.resolve();
 
 // Middleware
@@ -24,18 +24,26 @@ app.use(
   })
 );
 
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "success",
+    message: "API is working perfectly!",
+    timestamp: new Date().toISOString()
+  });
+});
+
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
-// Serve static files in production (for Vercel)
+// Serve static files in production
 if (process.env.NODE_ENV === "production") {
-  // Vercel serves static files from /public directory by default
-  app.use(express.static(path.join(__dirname, "public")));
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
   
-  // For client-side routing (if you're serving a frontend)
+  // Handle client-side routing
   app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "index.html"));
+    res.sendFile(path.join(__dirname, "../frontend/dist", "index.html"));
   });
 }
 
