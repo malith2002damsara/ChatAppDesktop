@@ -9,9 +9,13 @@ export const axiosInstance = axios.create({
   timeout: 30000, // Increase timeout to 30 seconds
 });
 
-// Add request interceptor for debugging
+// Add request interceptor to include token in headers
 axiosInstance.interceptors.request.use(
   (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     console.log('Making request to:', config.baseURL + config.url);
     console.log('Request config:', config);
     return config;

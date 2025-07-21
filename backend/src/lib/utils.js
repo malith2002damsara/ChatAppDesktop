@@ -5,6 +5,12 @@ export const generateToken = (userId, res) => {
     expiresIn: "7d",
   });
 
+  // For production deployment, return token instead of setting cookie
+  if (process.env.NODE_ENV === "production") {
+    return token;
+  }
+
+  // For development, still use cookies
   res.cookie("jwt", token, {
     maxAge: 7 * 24 * 60 * 60 * 1000, // MS
     httpOnly: true, // prevent XSS attacks cross-site scripting attacks
