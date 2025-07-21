@@ -42,7 +42,10 @@ export const useAuthStore = create((set, get) => ({
   signup: async (data) => {
     set({ isSigningUp: true });
     try {
+      console.log('Attempting signup with:', data);
       const res = await axiosInstance.post("/auth/signup", data);
+      console.log('Signup successful:', res.data);
+      
       set({ authUser: res.data });
       
       // Store token if provided
@@ -54,8 +57,25 @@ export const useAuthStore = create((set, get) => ({
       toast.success("Account created successfully");
       get().connectSocket();
     } catch (error) {
-      console.error("Signup error:", error);
-      toast.error(error.response?.data?.message || "Signup failed");
+      console.error("Signup error details:", {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      
+      let errorMessage = "Signup failed";
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.code === 'NETWORK_ERROR') {
+        errorMessage = "Network error - please check your connection";
+      } else if (error.message.includes('CORS')) {
+        errorMessage = "CORS error - backend configuration issue";
+      } else if (error.response?.status === 404) {
+        errorMessage = "Signup endpoint not found";
+      }
+      
+      toast.error(errorMessage);
     } finally {
       set({ isSigningUp: false });
     }
@@ -64,7 +84,10 @@ export const useAuthStore = create((set, get) => ({
   login: async (data) => {
     set({ isLoggingIn: true });
     try {
+      console.log('Attempting login with:', data);
       const res = await axiosInstance.post("/auth/login", data);
+      console.log('Login successful:', res.data);
+      
       set({ authUser: res.data });
       
       // Store token if provided
@@ -76,8 +99,27 @@ export const useAuthStore = create((set, get) => ({
       toast.success("Logged in successfully");
       get().connectSocket();
     } catch (error) {
-      console.error("Login error:", error);
-      toast.error(error.response?.data?.message || "Login failed");
+      console.error("Login error details:", {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      
+      let errorMessage = "Login failed";
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.code === 'NETWORK_ERROR') {
+        errorMessage = "Network error - please check your connection";
+      } else if (error.message.includes('CORS')) {
+        errorMessage = "CORS error - backend configuration issue";
+      } else if (error.response?.status === 404) {
+        errorMessage = "Login endpoint not found";
+      } else if (error.response?.status === 401) {
+        errorMessage = "Invalid credentials";
+      }
+      
+      toast.error(errorMessage);
     } finally {
       set({ isLoggingIn: false });
     }
