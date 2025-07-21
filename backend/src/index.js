@@ -19,10 +19,17 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: true, // Allow all origins for testing
+    origin: process.env.NODE_ENV === "production" 
+      ? [
+          "https://chat-app-desktop-frontend.vercel.app",
+          "http://localhost:5173"
+        ]
+      : true, // Allow all origins in development
     credentials: false, // Disable credentials for Vercel compatibility
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
 
@@ -33,6 +40,15 @@ app.get("/", (req, res) => {
     timestamp: new Date().toISOString(),
     cors: "enabled"
   });
+});
+
+// Handle preflight requests for Socket.IO
+app.options("/socket.io/*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  res.header("Access-Control-Allow-Credentials", "false");
+  res.sendStatus(200);
 });
 
 // Test endpoint for CORS

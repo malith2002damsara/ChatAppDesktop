@@ -18,15 +18,25 @@ export const useAuthStore = create((set, get) => ({
     try {
       // Check for stored token
       const token = localStorage.getItem('token');
+      console.log('CheckAuth - Token from localStorage:', !!token);
+      
       if (token) {
         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        console.log('CheckAuth - Authorization header set');
+      } else {
+        console.log('CheckAuth - No token found in localStorage');
+        set({ authUser: null, isCheckingAuth: false });
+        return;
       }
       
+      console.log('CheckAuth - Making request to /auth/check');
       const res = await axiosInstance.get("/auth/check");
+      console.log('CheckAuth - Success:', res.data);
       set({ authUser: res.data });
       get().connectSocket();
     } catch (error) {
       console.log("Error in checkAuth:", error);
+      console.log("Error response:", error.response?.data);
       if (error.code === 'NETWORK_ERROR' || error.message.includes('CORS')) {
         console.log("Network or CORS error - check backend connection");
       }
@@ -45,6 +55,7 @@ export const useAuthStore = create((set, get) => ({
       console.log('Attempting signup with:', data);
       const res = await axiosInstance.post("/auth/signup", data);
       console.log('Signup successful:', res.data);
+      console.log('Token received:', !!res.data.token);
       
       set({ authUser: res.data });
       
@@ -52,6 +63,9 @@ export const useAuthStore = create((set, get) => ({
       if (res.data.token) {
         localStorage.setItem('token', res.data.token);
         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+        console.log('Token stored and axios header set');
+      } else {
+        console.log('No token received from server');
       }
       
       toast.success("Account created successfully");
@@ -93,6 +107,7 @@ export const useAuthStore = create((set, get) => ({
       console.log('Attempting login with:', data);
       const res = await axiosInstance.post("/auth/login", data);
       console.log('Login successful:', res.data);
+      console.log('Token received:', !!res.data.token);
       
       set({ authUser: res.data });
       
@@ -100,6 +115,9 @@ export const useAuthStore = create((set, get) => ({
       if (res.data.token) {
         localStorage.setItem('token', res.data.token);
         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+        console.log('Token stored and axios header set');
+      } else {
+        console.log('No token received from server');
       }
       
       toast.success("Logged in successfully");
@@ -189,6 +207,9 @@ export const useAuthStore = create((set, get) => ({
       query: {
         userId: authUser._id,
       },
+      transports: ["websocket", "polling"],
+      timeout: 20000,
+      forceNew: true
     });
     socket.connect();
 

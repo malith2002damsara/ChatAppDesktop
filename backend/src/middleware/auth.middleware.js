@@ -10,13 +10,20 @@ export const protectRoute = async (req, res, next) => {
       token = req.headers.authorization.substring(7);
     }
 
+    console.log('Auth middleware - Token found:', !!token);
+    console.log('Auth middleware - Headers:', req.headers.authorization ? 'Has Authorization header' : 'No Authorization header');
+    console.log('Auth middleware - Cookies:', req.cookies.jwt ? 'Has jwt cookie' : 'No jwt cookie');
+
     if (!token) {
+      console.log('Auth middleware - No token provided');
       return res.status(401).json({ message: "Unauthorized - No Token Provided" });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Auth middleware - Token decoded successfully:', !!decoded);
 
     if (!decoded) {
+      console.log('Auth middleware - Token decode failed');
       return res.status(401).json({ message: "Unauthorized - Invalid Token" });
     }
 

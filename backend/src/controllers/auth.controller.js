@@ -42,7 +42,7 @@ export const signup = async (req, res) => {
         fullName: newUser.fullName,
         email: newUser.email,
         profilePic: newUser.profilePic,
-        token: process.env.NODE_ENV === "production" ? token : undefined,
+        token: token, // Always return token for frontend localStorage
       });
     } else {
       res.status(400).json({ message: "Invalid user data" });
@@ -96,7 +96,7 @@ export const login = async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
-      token: process.env.NODE_ENV === "production" ? token : undefined,
+      token: token, // Always return token for frontend localStorage
     });
   } catch (error) {
     console.log("Error in login controller", error.message);
