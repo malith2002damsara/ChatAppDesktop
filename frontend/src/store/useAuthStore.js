@@ -67,6 +67,8 @@ export const useAuthStore = create((set, get) => ({
       let errorMessage = "Signup failed";
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
+      } else if (error.message.includes('timeout')) {
+        errorMessage = "Request timeout - backend may be sleeping. Please try again.";
       } else if (error.code === 'NETWORK_ERROR') {
         errorMessage = "Network error - please check your connection";
       } else if (error.message.includes('CORS')) {
@@ -109,6 +111,8 @@ export const useAuthStore = create((set, get) => ({
       let errorMessage = "Login failed";
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
+      } else if (error.message.includes('timeout')) {
+        errorMessage = "Request timeout - backend may be sleeping. Please try again.";
       } else if (error.code === 'NETWORK_ERROR') {
         errorMessage = "Network error - please check your connection";
       } else if (error.message.includes('CORS')) {

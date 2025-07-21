@@ -19,26 +19,10 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-      
-      const allowedOrigins = [
-        "http://localhost:5173",
-        "https://localhost:5173",
-        "https://your-frontend-domain.vercel.app", // Replace with your actual frontend domain
-      ];
-      
-      // Check if the origin is in the allowed list or if it's a vercel.app domain
-      if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-        return callback(null, true);
-      }
-      
-      return callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
+    origin: true, // Allow all origins for testing
+    credentials: false, // Disable credentials for Vercel compatibility
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 

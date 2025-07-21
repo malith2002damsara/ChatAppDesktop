@@ -2,17 +2,18 @@ import axios from "axios";
 
 export const axiosInstance = axios.create({
   baseURL: import.meta.env.MODE === "development" ? "http://localhost:5001/api" : "https://chat-app-desktop-backend.vercel.app/api",
-  withCredentials: import.meta.env.MODE === "development",
+  withCredentials: false, // Disable credentials for Vercel compatibility
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 second timeout
+  timeout: 30000, // Increase timeout to 30 seconds
 });
 
 // Add request interceptor for debugging
 axiosInstance.interceptors.request.use(
   (config) => {
     console.log('Making request to:', config.baseURL + config.url);
+    console.log('Request config:', config);
     return config;
   },
   (error) => {
@@ -24,11 +25,11 @@ axiosInstance.interceptors.request.use(
 // Add response interceptor for debugging
 axiosInstance.interceptors.response.use(
   (response) => {
-    console.log('Response received:', response.status);
+    console.log('Response received:', response.status, response.data);
     return response;
   },
   (error) => {
-    console.error('Response error:', error.response?.status, error.response?.data);
+    console.error('Response error:', error.response?.status, error.response?.data, error.message);
     return Promise.reject(error);
   }
 );
