@@ -126,19 +126,67 @@ export const logout = (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { profilePic } = req.body;
+    const { profilePic, fullName, email, currentPassword, newPassword } = req.body;
     const userId = req.user._id;
 
-    if (!profilePic) {
-      return res.status(400).json({ message: "Profile pic is required" });
+    // Get the current user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const uploadResponse = await cloudinary.uploader.upload(profilePic);
+    const updateData = {};
+
+    // Handle profile picture update
+    if (profilePic) {
+      const uploadResponse = await cloudinary.uploader.upload(profilePic);
+      updateData.profilePic = uploadResponse.secure_url;
+    }
+
+    // Handle name update
+    if (fullName && fullName.trim() !== "") {
+      updateData.fullName = fullName.trim();
+    }
+
+    // Handle email update
+    if (email && email !== user.email) {
+      // Check if email already exists
+      const existingUser = await User.findOne({ email, _id: { $ne: userId } });
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+      updateData.email = email;
+    }
+
+    // Handle password update
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: "Current password is required to set new password" });
+      }
+
+      const isCurrentPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
+      if (!isCurrentPasswordCorrect) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters" });
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      updateData.password = await bcrypt.hash(newPassword, salt);
+    }
+
+    // Update user if there are changes
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "No changes provided" });
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { profilePic: uploadResponse.secure_url },
+      updateData,
       { new: true }
-    );
+    ).select("-password");
 
     res.status(200).json(updatedUser);
   } catch (error) {

@@ -142,3 +142,78 @@ export const sendMessage = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const deleteMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user._id;
+
+    // Find the message and verify ownership
+    const message = await Message.findById(messageId);
+    
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    // Only allow sender to delete their own messages
+    if (message.senderId.toString() !== userId.toString()) {
+      return res.status(403).json({ error: "You can only delete your own messages" });
+    }
+
+    await Message.findByIdAndDelete(messageId);
+
+    // Emit deletion event to both sender and receiver
+    const receiverSocketId = getReceiverSocketId(message.receiverId);
+    const senderSocketId = getReceiverSocketId(message.senderId);
+    
+    const deleteEvent = { messageId, senderId: message.senderId, receiverId: message.receiverId };
+    
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageDeleted", deleteEvent);
+    }
+    
+    if (senderSocketId && senderSocketId !== receiverSocketId) {
+      io.to(senderSocketId).emit("messageDeleted", deleteEvent);
+    }
+
+    res.status(200).json({ message: "Message deleted successfully" });
+  } catch (error) {
+    console.log("Error in deleteMessage controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const clearAllMessages = async (req, res) => {
+  try {
+    const { id: userToChatId } = req.params;
+    const myId = req.user._id;
+
+    // Delete all messages between the two users where current user is the sender
+    const deleteResult = await Message.deleteMany({
+      senderId: myId,
+      receiverId: userToChatId
+    });
+
+    // Emit clear event to both users
+    const receiverSocketId = getReceiverSocketId(userToChatId);
+    const senderSocketId = getReceiverSocketId(myId);
+    
+    const clearEvent = { senderId: myId, receiverId: userToChatId, deletedCount: deleteResult.deletedCount };
+    
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messagesCleared", clearEvent);
+    }
+    
+    if (senderSocketId && senderSocketId !== receiverSocketId) {
+      io.to(senderSocketId).emit("messagesCleared", clearEvent);
+    }
+
+    res.status(200).json({ 
+      message: `${deleteResult.deletedCount} messages cleared successfully`,
+      deletedCount: deleteResult.deletedCount
+    });
+  } catch (error) {
+    console.log("Error in clearAllMessages controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

@@ -11,6 +11,8 @@ export const useChatStore = create((set, get) => ({
   isMessagesLoading: false,
   lastMessageTime: null, // Track last message for auto-refresh
   messagePollingInterval: null, // For polling fallback
+  onlineUsers: [], // Track online users
+  userPresence: {}, // Track user presence status
 
   getUsers: async () => {
     set({ isUsersLoading: true });
@@ -131,6 +133,84 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  deleteMessage: async (messageId) => {
+    try {
+      await axiosInstance.delete(`/messages/delete/${messageId}`);
+      
+      // Remove message from local state immediately
+      const { messages } = get();
+      set({ messages: messages.filter(msg => msg._id !== messageId) });
+      
+      toast.success("Message deleted");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete message");
+    }
+  },
+
+  clearAllMessages: async () => {
+    const { selectedUser } = get();
+    if (!selectedUser) return;
+    
+    try {
+      const res = await axiosInstance.delete(`/messages/clear/${selectedUser._id}`);
+      
+      // Remove all sent messages from local state
+      const { messages } = get();
+      const authUserId = useAuthStore.getState().authUser._id;
+      const remainingMessages = messages.filter(msg => msg.senderId !== authUserId);
+      set({ messages: remainingMessages });
+      
+      toast.success(`${res.data.deletedCount} messages cleared`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to clear messages");
+    }
+  },
+
+  // Update online users list
+  setOnlineUsers: (users) => {
+    set({ onlineUsers: users });
+  },
+
+  // Update user presence
+  updateUserPresence: (userId, status) => {
+    const { userPresence } = get();
+    set({
+      userPresence: {
+        ...userPresence,
+        [userId]: {
+          status,
+          lastSeen: new Date(),
+          timestamp: Date.now()
+        }
+      }
+    });
+  },
+
+  // Check if user is online
+  isUserOnline: (userId) => {
+    const { onlineUsers } = get();
+    return onlineUsers.includes(userId);
+  },
+
+  // Get user status (online, offline, away, etc.)
+  getUserStatus: (userId) => {
+    const { userPresence, onlineUsers } = get();
+    
+    if (onlineUsers.includes(userId)) {
+      return userPresence[userId]?.status || 'online';
+    }
+    
+    const presence = userPresence[userId];
+    if (presence && presence.lastSeen) {
+      const timeDiff = Date.now() - new Date(presence.lastSeen).getTime();
+      if (timeDiff < 5 * 60 * 1000) { // 5 minutes
+        return 'recently online';
+      }
+    }
+    
+    return 'offline';
+  },
+
   subscribeToMessages: () => {
     const { selectedUser } = get();
     if (!selectedUser) return;
@@ -179,6 +259,51 @@ export const useChatStore = create((set, get) => ({
       }
     });
 
+    // Handle message deletion
+    socket.on("messageDeleted", (data) => {
+      console.log("Message deleted:", data);
+      const { messages } = get();
+      set({ messages: messages.filter(msg => msg._id !== data.messageId) });
+    });
+
+    // Handle clear all messages
+    socket.on("messagesCleared", (data) => {
+      console.log("Messages cleared:", data);
+      const { messages } = get();
+      const remainingMessages = messages.filter(msg => msg.senderId !== data.senderId);
+      set({ messages: remainingMessages });
+    });
+
+    // Handle online users
+    socket.on("getOnlineUsers", (users) => {
+      console.log("Online users updated:", users);
+      set({ onlineUsers: users });
+    });
+
+    // Handle user coming online
+    socket.on("userOnline", (userId) => {
+      console.log("User came online:", userId);
+      const { onlineUsers } = get();
+      if (!onlineUsers.includes(userId)) {
+        set({ onlineUsers: [...onlineUsers, userId] });
+      }
+      get().updateUserPresence(userId, 'online');
+    });
+
+    // Handle user going offline
+    socket.on("userOffline", (data) => {
+      console.log("User went offline:", data);
+      const { onlineUsers } = get();
+      set({ onlineUsers: onlineUsers.filter(id => id !== data.userId) });
+      get().updateUserPresence(data.userId, 'offline');
+    });
+
+    // Handle user presence updates
+    socket.on("userPresenceUpdate", (data) => {
+      console.log("User presence update:", data);
+      get().updateUserPresence(data.userId, data.status);
+    });
+
     // Handle connection issues
     socket.on("disconnect", () => {
       console.log("Socket disconnected, starting polling fallback");
@@ -195,6 +320,12 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.off("newMessage");
+      socket.off("messageDeleted");
+      socket.off("messagesCleared");
+      socket.off("getOnlineUsers");
+      socket.off("userOnline");
+      socket.off("userOffline");
+      socket.off("userPresenceUpdate");
       socket.off("disconnect");
       socket.off("connect");
     }

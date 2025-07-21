@@ -190,10 +190,22 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.put("/auth/update-profile", data);
       set({ authUser: res.data });
-      toast.success("Profile updated successfully");
+      
+      // Show specific success messages based on what was updated
+      if (data.profilePic) {
+        toast.success("Profile picture updated successfully");
+      } else if (data.fullName) {
+        toast.success("Name updated successfully");
+      } else if (data.email) {
+        toast.success("Email updated successfully");
+      } else if (data.newPassword) {
+        toast.success("Password updated successfully");
+      } else {
+        toast.success("Profile updated successfully");
+      }
     } catch (error) {
       console.log("error in update profile:", error);
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Failed to update profile");
     } finally {
       set({ isUpdatingProfile: false });
     }
@@ -221,6 +233,27 @@ export const useAuthStore = create((set, get) => ({
     
     socket.on("connect_error", (error) => {
       console.error("Socket connection error:", error);
+    });
+
+    // Handle online users updates
+    socket.on("getOnlineUsers", (userIds) => {
+      console.log("Online users received:", userIds);
+      set({ onlineUsers: userIds });
+    });
+
+    // Handle individual user online status
+    socket.on("userOnline", (userId) => {
+      console.log("User came online:", userId);
+      const { onlineUsers } = get();
+      if (!onlineUsers.includes(userId)) {
+        set({ onlineUsers: [...onlineUsers, userId] });
+      }
+    });
+
+    socket.on("userOffline", (data) => {
+      console.log("User went offline:", data.userId);
+      const { onlineUsers } = get();
+      set({ onlineUsers: onlineUsers.filter(id => id !== data.userId) });
     });
     
     socket.connect();

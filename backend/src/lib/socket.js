@@ -39,6 +39,9 @@ io.on("connection", (socket) => {
   if (userId) {
     userSocketMap[userId] = socket.id;
     console.log(`User ${userId} mapped to socket ${socket.id}`);
+    
+    // Emit user came online
+    socket.broadcast.emit("userOnline", userId);
   }
 
   // io.emit() is used to send events to all the connected clients
@@ -63,10 +66,52 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Handle message deletion
+  socket.on("deleteMessage", (data) => {
+    const receiverSocketId = getReceiverSocketId(data.receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageDeleted", data);
+    }
+  });
+
+  // Handle clear all messages
+  socket.on("clearMessages", (data) => {
+    const receiverSocketId = getReceiverSocketId(data.receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messagesCleared", data);
+    }
+  });
+
+  // Handle user activity/presence
+  socket.on("updatePresence", (status) => {
+    if (userId) {
+      socket.broadcast.emit("userPresenceUpdate", {
+        userId,
+        status, // online, away, busy, offline
+        lastSeen: new Date()
+      });
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.id);
-    delete userSocketMap[userId];
+    
+    if (userId) {
+      // Emit user went offline
+      socket.broadcast.emit("userOffline", {
+        userId,
+        lastSeen: new Date()
+      });
+      
+      delete userSocketMap[userId];
+    }
+    
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
+  });
+
+  // Handle connection errors
+  socket.on("error", (error) => {
+    console.log("Socket error:", error);
   });
 });
 
