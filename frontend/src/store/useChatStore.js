@@ -100,34 +100,42 @@ export const useChatStore = create((set, get) => ({
   },
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
+    
+    // Create temp message
+    const tempMessage = {
+      _id: Date.now().toString(), // Temporary ID
+      senderId: useAuthStore.getState().authUser._id,
+      receiverId: selectedUser._id,
+      text: messageData.text,
+      image: messageData.image,
+      createdAt: new Date(),
+      isOptimistic: true // Flag to identify optimistic messages
+    };
+    
     try {
       // Optimistic update - add message immediately to UI
-      const tempMessage = {
-        _id: Date.now().toString(), // Temporary ID
-        senderId: useAuthStore.getState().authUser._id,
-        receiverId: selectedUser._id,
-        text: messageData.text,
-        image: messageData.image,
-        createdAt: new Date(),
-        isOptimistic: true // Flag to identify optimistic messages
-      };
-      
-      // Immediately update UI
       set({ messages: [...messages, tempMessage] });
 
       // Send message to server
       const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
       
       // Replace optimistic message with real message
-      set({ 
-        messages: messages.map(msg => 
-          msg._id === tempMessage._id ? res.data : msg
-        ).concat(res.data._id === tempMessage._id ? [] : [res.data])
-      });
+      const currentMessages = get().messages;
+      const updatedMessages = currentMessages.map(msg => 
+        msg._id === tempMessage._id ? res.data : msg
+      );
+      
+      // If the server message wasn't found, add it
+      if (!updatedMessages.some(msg => msg._id === res.data._id)) {
+        updatedMessages.push(res.data);
+      }
+      
+      set({ messages: updatedMessages });
     } catch (error) {
       // Remove optimistic message on error
+      const currentMessages = get().messages;
       set({ 
-        messages: messages.filter(msg => msg._id !== tempMessage._id)
+        messages: currentMessages.filter(msg => msg._id !== tempMessage._id)
       });
       toast.error(error.response?.data?.message || "Failed to send message");
     }

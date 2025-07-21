@@ -145,7 +145,7 @@ const SettingsPage = () => {
                       <div className="flex gap-3 items-end">
                         <input
                           type="text"
-                          className="input input-bordered flex-1 text-sm h-12 bg-base-100/50 border-base-300/30 focus:border-primary/50 transition-all duration-200"
+                          className="input flex-1 text-sm h-12 bg-base-100/50 border-base-300/30 focus:border-primary/50 transition-all duration-200"
                           placeholder="Type your message..."
                           value="This theme looks incredible! ✨"
                           readOnly

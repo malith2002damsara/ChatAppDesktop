@@ -7,7 +7,7 @@ import { exportChatToPDF, getMessageStats } from '../lib/pdfUtils';
 
 const ChatHeader = () => {
   const { selectedUser, setSelectedUser, clearAllMessages, isUserOnline, getUserStatus, messages } = useChatStore();
-  const { onlineUsers, authUser } = useAuthStore();
+  const { authUser } = useAuthStore();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showExportInfo, setShowExportInfo] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -95,13 +95,23 @@ const ChatHeader = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Chat options dropdown */}
+          {/* Mobile export button - visible on small screens */}
+          <button
+            onClick={handleExportChat}
+            disabled={isExporting || messages.length === 0}
+            className="btn btn-ghost btn-sm sm:hidden"
+            title="Export Chat"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+
+          {/* Chat options dropdown - enhanced for mobile */}
           <div className="dropdown dropdown-end">
             <div tabIndex={0} role="button" className="btn btn-ghost btn-sm">
               <MoreVertical className="w-4 h-4" />
             </div>
-            <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-box w-48 border border-base-300">
-              <li>
+            <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-box w-52 sm:w-48 border border-base-300">
+              <li className="hidden sm:block">
                 <button
                   onClick={() => setShowExportInfo(true)}
                   disabled={messages.length === 0}
@@ -111,7 +121,7 @@ const ChatHeader = () => {
                   Export Info
                 </button>
               </li>
-              <li>
+              <li className="hidden sm:block">
                 <button
                   onClick={handleExportChat}
                   disabled={isExporting || messages.length === 0}
@@ -119,6 +129,17 @@ const ChatHeader = () => {
                 >
                   <Download className="w-4 h-4" />
                   {isExporting ? 'Exporting...' : 'Export Chat'}
+                </button>
+              </li>
+              {/* Mobile-optimized export options */}
+              <li className="sm:hidden">
+                <button
+                  onClick={() => setShowExportInfo(true)}
+                  disabled={messages.length === 0}
+                  className="hover:bg-primary/10 gap-2 text-sm"
+                >
+                  <Info className="w-4 h-4" />
+                  Chat Export Info
                 </button>
               </li>
               <li>
