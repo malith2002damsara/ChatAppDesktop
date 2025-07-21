@@ -208,9 +208,21 @@ export const useAuthStore = create((set, get) => ({
         userId: authUser._id,
       },
       transports: ["websocket", "polling"],
-      timeout: 20000,
-      forceNew: true
+      timeout: 10000, // Reduce timeout for faster connection
+      forceNew: true,
+      upgrade: true, // Allow transport upgrades for better performance
+      rememberUpgrade: true // Remember the upgraded transport
     });
+    
+    // Add connection event listeners for better debugging
+    socket.on("connect", () => {
+      console.log("Socket connected successfully");
+    });
+    
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
+    
     socket.connect();
 
     set({ socket: socket });

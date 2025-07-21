@@ -7,9 +7,12 @@ import { getReceiverSocketId, io } from "../lib/socket.js";
 export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
+    
+    // Optimize user query with lean and reduced timeout
     const filteredUsers = await User.find({ _id: { $ne: loggedInUserId } })
       .select("-password")
-      .maxTimeMS(10000);
+      .lean() // Use lean for faster queries
+      .maxTimeMS(5000); // Reduce timeout for faster response
 
     res.status(200).json(filteredUsers);
   } catch (error) {
@@ -32,12 +35,17 @@ export const getMessages = async (req, res) => {
     const { id: userToChatId } = req.params;
     const myId = req.user._id;
 
+    // Optimize query with sorting and limit for faster retrieval
     const messages = await Message.find({
       $or: [
         { senderId: myId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: myId },
       ],
-    }).maxTimeMS(10000);
+    })
+    .sort({ createdAt: 1 }) // Sort by creation time
+    .limit(100) // Limit to last 100 messages for faster loading
+    .lean() // Use lean for faster queries
+    .maxTimeMS(5000); // Reduce timeout for faster response
 
     res.status(200).json(messages);
   } catch (error) {
@@ -75,14 +83,19 @@ export const sendMessage = async (req, res) => {
       image: imageUrl,
     });
 
-    await newMessage.save();
+    // Save message and emit to socket in parallel for faster response
+    const [savedMessage] = await Promise.all([
+      newMessage.save(),
+      // Emit to socket immediately without waiting
+      (async () => {
+        const receiverSocketId = getReceiverSocketId(receiverId);
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit("newMessage", newMessage);
+        }
+      })()
+    ]);
 
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", newMessage);
-    }
-
-    res.status(201).json(newMessage);
+    res.status(201).json(savedMessage);
   } catch (error) {
     console.log("Error in sendMessage controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });

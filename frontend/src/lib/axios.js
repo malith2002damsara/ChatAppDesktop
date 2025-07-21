@@ -6,7 +6,9 @@ export const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000, // Increase timeout to 30 seconds
+  timeout: 15000, // Reduce timeout for faster failures
+  maxRedirects: 3, // Limit redirects
+  decompress: true, // Enable compression
 });
 
 // Add request interceptor to include token in headers

@@ -19,8 +19,10 @@ const io = new Server(server, {
   },
   transports: ["websocket", "polling"],
   allowEIO3: true, // Enable compatibility with older clients
-  pingTimeout: 60000,
-  pingInterval: 25000
+  pingTimeout: 30000, // Reduce ping timeout for faster detection
+  pingInterval: 10000, // More frequent pings for better real-time performance
+  upgradeTimeout: 5000, // Faster upgrade timeout
+  maxHttpBufferSize: 1e6, // 1MB limit for faster message processing
 });
 
 export function getReceiverSocketId(userId) {
@@ -34,10 +36,32 @@ io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
 
   const userId = socket.handshake.query.userId;
-  if (userId) userSocketMap[userId] = socket.id;
+  if (userId) {
+    userSocketMap[userId] = socket.id;
+    console.log(`User ${userId} mapped to socket ${socket.id}`);
+  }
 
   // io.emit() is used to send events to all the connected clients
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
+
+  // Handle real-time message events
+  socket.on("sendMessage", (messageData) => {
+    const receiverSocketId = getReceiverSocketId(messageData.receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", messageData);
+    }
+  });
+
+  // Handle typing indicators for better UX
+  socket.on("typing", (data) => {
+    const receiverSocketId = getReceiverSocketId(data.receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("userTyping", {
+        senderId: userId,
+        isTyping: data.isTyping
+      });
+    }
+  });
 
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.id);
