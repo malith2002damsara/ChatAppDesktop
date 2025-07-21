@@ -44,6 +44,25 @@ app.get("/api/test", (req, res) => {
   });
 });
 
+// Database test endpoint
+app.get("/api/db-test", async (req, res) => {
+  try {
+    const User = (await import("./models/user.model.js")).default;
+    const userCount = await User.countDocuments();
+    res.json({ 
+      message: "Database connection successful!",
+      userCount,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: "Database connection failed",
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({ 

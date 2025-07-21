@@ -7,6 +7,8 @@ import cloudinary from "../lib/cloudinary.js";
 export const signup = async (req, res) => {
   const { fullName, email, password } = req.body;
   try {
+    console.log("Signup attempt for:", { fullName, email });
+    
     if (!fullName || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -29,9 +31,10 @@ export const signup = async (req, res) => {
     });
 
     if (newUser) {
-      // generate jwt token here
+      console.log("Generating token for new user...");
       const token = generateToken(newUser._id, res);
       await newUser.save();
+      console.log("User saved successfully");
 
       res.status(201).json({
         _id: newUser._id,
@@ -45,25 +48,37 @@ export const signup = async (req, res) => {
     }
   } catch (error) {
     console.log("Error in signup controller", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.log("Full error:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
+    console.log("Login attempt for email:", email);
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
     const user = await User.findOne({ email });
+    console.log("User found:", user ? "Yes" : "No");
 
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    console.log("Password correct:", isPasswordCorrect);
+    
     if (!isPasswordCorrect) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    console.log("Generating token...");
     const token = generateToken(user._id, res);
+    console.log("Token generated successfully");
 
     res.status(200).json({
       _id: user._id,
@@ -74,7 +89,8 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in login controller", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.log("Full error:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 

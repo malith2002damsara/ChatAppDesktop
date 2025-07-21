@@ -67,6 +67,8 @@ export const useAuthStore = create((set, get) => ({
       let errorMessage = "Signup failed";
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = `Signup error: ${error.response.data.error}`;
       } else if (error.message.includes('timeout')) {
         errorMessage = "Request timeout - backend may be sleeping. Please try again.";
       } else if (error.code === 'NETWORK_ERROR') {
@@ -75,6 +77,8 @@ export const useAuthStore = create((set, get) => ({
         errorMessage = "CORS error - backend configuration issue";
       } else if (error.response?.status === 404) {
         errorMessage = "Signup endpoint not found";
+      } else if (error.response?.status === 500) {
+        errorMessage = "Server error - please check backend logs";
       }
       
       toast.error(errorMessage);
@@ -111,6 +115,8 @@ export const useAuthStore = create((set, get) => ({
       let errorMessage = "Login failed";
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = `Login error: ${error.response.data.error}`;
       } else if (error.message.includes('timeout')) {
         errorMessage = "Request timeout - backend may be sleeping. Please try again.";
       } else if (error.code === 'NETWORK_ERROR') {
@@ -121,6 +127,8 @@ export const useAuthStore = create((set, get) => ({
         errorMessage = "Login endpoint not found";
       } else if (error.response?.status === 401) {
         errorMessage = "Invalid credentials";
+      } else if (error.response?.status === 500) {
+        errorMessage = "Server error - please check backend logs";
       }
       
       toast.error(errorMessage);
