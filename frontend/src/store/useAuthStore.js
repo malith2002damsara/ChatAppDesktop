@@ -22,6 +22,9 @@ export const useAuthStore = create((set, get) => ({
       get().connectSocket();
     } catch (error) {
       console.log("Error in checkAuth:", error);
+      if (error.code === 'NETWORK_ERROR' || error.message.includes('CORS')) {
+        console.log("Network or CORS error - check backend connection");
+      }
       set({ authUser: null });
     } finally {
       set({ isCheckingAuth: false });
