@@ -20,7 +20,8 @@ export const protectRoute = async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized - Invalid Token" });
     }
 
-    const user = await User.findById(decoded.userId).select("-password");
+    // Add timeout to the database query
+    const user = await User.findById(decoded.userId).select("-password").maxTimeMS(10000);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -31,6 +32,23 @@ export const protectRoute = async (req, res, next) => {
     next();
   } catch (error) {
     console.log("Error in protectRoute middleware: ", error.message);
+    
+    // Handle specific MongoDB timeout errors
+    if (error.name === 'MongooseError' && error.message.includes('buffering timed out')) {
+      return res.status(503).json({ 
+        message: "Database connection timeout", 
+        error: "Please try again in a moment" 
+      });
+    }
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: "Unauthorized - Invalid Token" });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: "Unauthorized - Token Expired" });
+    }
+    
     res.status(500).json({ message: "Internal server error" });
   }
 };

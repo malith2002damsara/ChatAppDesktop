@@ -26,14 +26,33 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Add response interceptor for debugging
+// Add response interceptor for debugging and retry logic
 axiosInstance.interceptors.response.use(
   (response) => {
     console.log('Response received:', response.status, response.data);
     return response;
   },
-  (error) => {
+  async (error) => {
     console.error('Response error:', error.response?.status, error.response?.data, error.message);
+    
+    const originalRequest = error.config;
+    
+    // Retry logic for timeout and 5xx errors
+    if (
+      !originalRequest._retry &&
+      (error.code === 'ECONNABORTED' || 
+       error.response?.status >= 500 ||
+       error.response?.status === 503)
+    ) {
+      originalRequest._retry = true;
+      
+      // Wait 2 seconds before retry
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      console.log('Retrying request...');
+      return axiosInstance(originalRequest);
+    }
+    
     return Promise.reject(error);
   }
 );

@@ -92,10 +92,20 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`🌟 Server is running on PORT: ${PORT}`);
   console.log(`🔗 API URL: http://localhost:${PORT}`);
   console.log(`📡 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log("🔄 Connecting to database...");
-  connectDB();
+  
+  try {
+    await connectDB();
+    console.log("✅ Database connection established successfully");
+  } catch (error) {
+    console.error("❌ Failed to connect to database:", error);
+    // Don't exit the process in production
+    if (process.env.NODE_ENV !== "production") {
+      process.exit(1);
+    }
+  }
 });

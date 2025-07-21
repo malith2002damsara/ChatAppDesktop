@@ -116,7 +116,7 @@ export const useAuthStore = create((set, get) => ({
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.response?.data?.error) {
-        errorMessage = `Login error: ${error.response.data.error}`;
+        errorMessage = `${error.response.data.error}`;
       } else if (error.message.includes('timeout')) {
         errorMessage = "Request timeout - backend may be sleeping. Please try again.";
       } else if (error.code === 'NETWORK_ERROR') {
@@ -128,7 +128,14 @@ export const useAuthStore = create((set, get) => ({
       } else if (error.response?.status === 401) {
         errorMessage = "Invalid credentials";
       } else if (error.response?.status === 500) {
-        errorMessage = "Server error - please check backend logs";
+        // Check if it's a database timeout error
+        if (error.response?.data?.error && error.response.data.error.includes('timeout')) {
+          errorMessage = "Database connection timeout. Please try again.";
+        } else {
+          errorMessage = "Server error - please try again later";
+        }
+      } else if (error.response?.status === 503) {
+        errorMessage = "Service temporarily unavailable. Please try again.";
       }
       
       toast.error(errorMessage);

@@ -17,7 +17,8 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
 
-    const user = await User.findOne({ email });
+    // Add timeout to the database query
+    const user = await User.findOne({ email }).maxTimeMS(10000);
 
     if (user) return res.status(400).json({ message: "Email already exists" });
 
@@ -49,6 +50,15 @@ export const signup = async (req, res) => {
   } catch (error) {
     console.log("Error in signup controller", error.message);
     console.log("Full error:", error);
+    
+    // Handle specific MongoDB timeout errors
+    if (error.name === 'MongooseError' && error.message.includes('buffering timed out')) {
+      return res.status(500).json({ 
+        message: "Database connection timeout", 
+        error: "Please try again in a moment" 
+      });
+    }
+    
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
@@ -62,7 +72,8 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    const user = await User.findOne({ email });
+    // Add timeout to the database query
+    const user = await User.findOne({ email }).maxTimeMS(10000);
     console.log("User found:", user ? "Yes" : "No");
 
     if (!user) {
@@ -90,6 +101,15 @@ export const login = async (req, res) => {
   } catch (error) {
     console.log("Error in login controller", error.message);
     console.log("Full error:", error);
+    
+    // Handle specific MongoDB timeout errors
+    if (error.name === 'MongooseError' && error.message.includes('buffering timed out')) {
+      return res.status(500).json({ 
+        message: "Database connection timeout", 
+        error: "Please try again in a moment" 
+      });
+    }
+    
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
