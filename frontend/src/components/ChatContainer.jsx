@@ -1,5 +1,5 @@
 import { useChatStore } from "../store/useChatStore";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
@@ -15,23 +15,88 @@ const ChatContainer = () => {
     selectedUser,
     subscribeToMessages,
     unsubscribeFromMessages,
+    refreshMessages,
+    startMessagePolling,
+    stopMessagePolling,
   } = useChatStore();
-  const { authUser } = useAuthStore();
+  const { authUser, socket } = useAuthStore();
   const messageEndRef = useRef(null);
+  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
+  const chatContainerRef = useRef(null);
 
+  // Load messages and setup real-time subscriptions
   useEffect(() => {
+    if (!selectedUser?._id) return;
+
+    console.log("Setting up chat for user:", selectedUser._id);
+    
+    // Load initial messages
     getMessages(selectedUser._id);
 
+    // Setup real-time message subscription
     subscribeToMessages();
 
-    return () => unsubscribeFromMessages();
-  }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages]);
+    // Start auto-refresh as fallback
+    startMessagePolling();
 
+    return () => {
+      unsubscribeFromMessages();
+      stopMessagePolling();
+    };
+  }, [selectedUser?._id]);
+
+  // Enhanced auto-scroll with user scroll detection
   useEffect(() => {
-    if (messageEndRef.current && messages) {
+    if (messageEndRef.current && messages && isAutoScrollEnabled) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [messages, isAutoScrollEnabled]);
+
+  // Auto-refresh when window gains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log("Window focused, refreshing messages");
+      refreshMessages();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log("Tab became visible, refreshing messages");
+        refreshMessages();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshMessages]);
+
+  // Detect manual scrolling to disable auto-scroll
+  useEffect(() => {
+    const chatContainer = chatContainerRef.current;
+    if (!chatContainer) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainer;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setIsAutoScrollEnabled(isNearBottom);
+    };
+
+    chatContainer.addEventListener('scroll', handleScroll);
+    return () => chatContainer.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Ensure socket connection for real-time updates
+  useEffect(() => {
+    if (!socket?.connected) {
+      console.log("Socket not connected, attempting to connect...");
+      // Could trigger reconnection here if needed
+    }
+  }, [socket]);
 
   if (isMessagesLoading) {
     return (
@@ -47,14 +112,19 @@ const ChatContainer = () => {
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader />
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
+      <div 
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+        style={{ scrollBehavior: 'smooth' }}
+      >
+        {messages.map((message, index) => (
           <div
-            key={message._id}
-            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
-            ref={messageEndRef}
+            key={message._id || `temp-${index}`}
+            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"} ${
+              message.isOptimistic ? 'opacity-70' : ''
+            }`}
           >
-            <div className=" chat-image avatar">
+            <div className="chat-image avatar">
               <div className="size-10 rounded-full border">
                 <img
                   src={
@@ -83,6 +153,22 @@ const ChatContainer = () => {
             </div>
           </div>
         ))}
+        
+        {/* Auto-scroll target */}
+        <div ref={messageEndRef} />
+        
+        {/* Show scroll to bottom button when not auto-scrolling */}
+        {!isAutoScrollEnabled && (
+          <button
+            onClick={() => {
+              setIsAutoScrollEnabled(true);
+              messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="fixed bottom-24 right-8 bg-blue-500 text-white p-2 rounded-full shadow-lg hover:bg-blue-600 transition-colors"
+          >
+            ↓
+          </button>
+        )}
       </div>
 
       <MessageInput />

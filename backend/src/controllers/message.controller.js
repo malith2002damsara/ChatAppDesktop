@@ -63,6 +63,37 @@ export const getMessages = async (req, res) => {
   }
 };
 
+// New endpoint for checking new messages since timestamp
+export const getNewMessages = async (req, res) => {
+  try {
+    const { id: userToChatId } = req.params;
+    const { since } = req.query; // timestamp
+    const myId = req.user._id;
+
+    const query = {
+      $or: [
+        { senderId: myId, receiverId: userToChatId },
+        { senderId: userToChatId, receiverId: myId },
+      ],
+    };
+
+    // Add timestamp filter if provided
+    if (since) {
+      query.createdAt = { $gt: new Date(since) };
+    }
+
+    const messages = await Message.find(query)
+      .sort({ createdAt: 1 })
+      .lean()
+      .maxTimeMS(3000);
+
+    res.status(200).json(messages);
+  } catch (error) {
+    console.log("Error in getNewMessages controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 export const sendMessage = async (req, res) => {
   try {
     const { text, image } = req.body;
@@ -86,11 +117,21 @@ export const sendMessage = async (req, res) => {
     // Save message and emit to socket in parallel for faster response
     const [savedMessage] = await Promise.all([
       newMessage.save(),
-      // Emit to socket immediately without waiting
+      // Emit to both sender and receiver immediately
       (async () => {
         const receiverSocketId = getReceiverSocketId(receiverId);
+        const senderSocketId = getReceiverSocketId(senderId);
+        
+        console.log(`Emitting message to receiver: ${receiverSocketId}, sender: ${senderSocketId}`);
+        
+        // Send to receiver
         if (receiverSocketId) {
           io.to(receiverSocketId).emit("newMessage", newMessage);
+        }
+        
+        // Send to sender (for multi-device sync)
+        if (senderSocketId && senderSocketId !== receiverSocketId) {
+          io.to(senderSocketId).emit("newMessage", newMessage);
         }
       })()
     ]);
