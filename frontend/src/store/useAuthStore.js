@@ -16,8 +16,13 @@ export const useAuthStore = create((set, get) => ({
 
   checkAuth: async () => {
     try {
+      // Check for stored token
+      const token = localStorage.getItem('token');
+      if (token) {
+        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+      
       const res = await axiosInstance.get("/auth/check");
-
       set({ authUser: res.data });
       get().connectSocket();
     } catch (error) {
@@ -25,6 +30,9 @@ export const useAuthStore = create((set, get) => ({
       if (error.code === 'NETWORK_ERROR' || error.message.includes('CORS')) {
         console.log("Network or CORS error - check backend connection");
       }
+      // Clear invalid token
+      localStorage.removeItem('token');
+      delete axiosInstance.defaults.headers.common['Authorization'];
       set({ authUser: null });
     } finally {
       set({ isCheckingAuth: false });
@@ -36,10 +44,18 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.post("/auth/signup", data);
       set({ authUser: res.data });
+      
+      // Store token if provided
+      if (res.data.token) {
+        localStorage.setItem('token', res.data.token);
+        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+      }
+      
       toast.success("Account created successfully");
       get().connectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      console.error("Signup error:", error);
+      toast.error(error.response?.data?.message || "Signup failed");
     } finally {
       set({ isSigningUp: false });
     }
@@ -50,11 +66,18 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.post("/auth/login", data);
       set({ authUser: res.data });
+      
+      // Store token if provided
+      if (res.data.token) {
+        localStorage.setItem('token', res.data.token);
+        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+      }
+      
       toast.success("Logged in successfully");
-
       get().connectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      console.error("Login error:", error);
+      toast.error(error.response?.data?.message || "Login failed");
     } finally {
       set({ isLoggingIn: false });
     }
@@ -63,11 +86,23 @@ export const useAuthStore = create((set, get) => ({
   logout: async () => {
     try {
       await axiosInstance.post("/auth/logout");
+      
+      // Clear token and auth header
+      localStorage.removeItem('token');
+      delete axiosInstance.defaults.headers.common['Authorization'];
+      
       set({ authUser: null });
       toast.success("Logged out successfully");
       get().disconnectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      console.error("Logout error:", error);
+      
+      // Clear token even if logout request fails
+      localStorage.removeItem('token');
+      delete axiosInstance.defaults.headers.common['Authorization'];
+      set({ authUser: null });
+      
+      toast.error(error.response?.data?.message || "Logout failed");
     }
   },
 
